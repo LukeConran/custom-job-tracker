@@ -1,6 +1,3 @@
-"use client";
-
-import { useState } from "react";
 import { formatLocations, formatRelative } from "@/lib/format";
 import { FIT_LABELS } from "@/lib/status";
 import type { Role } from "@/lib/types";
@@ -13,9 +10,10 @@ const FIT_TONE: Record<string, string> = {
   other: "bg-line text-paper-dim",
 };
 
+const PREVIEW = 40;
+
 export function NextList({ roles }: { roles: Role[] }) {
-  const [hidden, setHidden] = useState<Set<string>>(new Set());
-  const visible = roles.filter((role) => !hidden.has(role.id));
+  const visible = roles.slice(0, PREVIEW);
 
   if (visible.length === 0) {
     return (
@@ -30,63 +28,55 @@ export function NextList({ roles }: { roles: Role[] }) {
   }
 
   return (
-    <ol className="space-y-3">
-      {visible.map((role, index) => (
-        <li
-          key={role.id}
-          className="rounded-2xl border border-line bg-ink-soft/90 p-4 shadow-[inset_0_1px_0_rgba(243,234,214,0.04)]"
-        >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-paper-dim">
-                <span className="font-serif text-lg normal-case tracking-tight text-brass">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <span className={`rounded-full px-2 py-0.5 tracking-[0.12em] ${FIT_TONE[role.fit_tag ?? "other"]}`}>
-                  {role.fit_tag ? FIT_LABELS[role.fit_tag] : "Role"}
-                </span>
-                <span>{role.source}</span>
-                {role.rank_score != null ? <span>score {role.rank_score}</span> : null}
+    <div className="space-y-3">
+      <ol className="space-y-3">
+        {visible.map((role, index) => (
+          <li
+            key={role.id}
+            className="rounded-2xl border border-line bg-ink-soft/90 p-4 shadow-[inset_0_1px_0_rgba(243,234,214,0.04)]"
+          >
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-paper-dim">
+                  <span className="font-serif text-lg normal-case tracking-tight text-brass">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 tracking-[0.12em] ${FIT_TONE[role.fit_tag ?? "other"]}`}
+                  >
+                    {role.fit_tag ? FIT_LABELS[role.fit_tag] : "Role"}
+                  </span>
+                  <span>{role.source}</span>
+                  {role.rank_score != null ? <span>score {role.rank_score}</span> : null}
+                </div>
+                <h3 className="mt-2 font-serif text-xl leading-snug text-paper">
+                  {role.company}
+                </h3>
+                <p className="mt-1 text-sm text-paper-dim">{role.title}</p>
+                <p className="mt-2 text-xs text-paper-dim/90">
+                  {formatLocations(role.locations)} · posted {formatRelative(role.posted_at)}
+                  {role.terms ? ` · ${role.terms}` : ""}
+                </p>
+                <a
+                  href={role.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex text-sm text-brass underline-offset-4 hover:underline"
+                >
+                  Open listing
+                </a>
               </div>
-              <h3 className="mt-2 font-serif text-xl leading-snug text-paper">
-                {role.company}
-              </h3>
-              <p className="mt-1 text-sm text-paper-dim">{role.title}</p>
-              <p className="mt-2 text-xs text-paper-dim/90">
-                {formatLocations(role.locations)} · posted {formatRelative(role.posted_at)}
-                {role.terms ? ` · ${role.terms}` : ""}
-              </p>
-              <a
-                href={role.url}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-3 inline-flex text-sm text-brass underline-offset-4 hover:underline"
-              >
-                Open listing
-              </a>
+              <StatusButtons role={role} />
             </div>
-            <StatusButtons
-              role={role}
-              onDone={() =>
-                setHidden((prev) => {
-                  const next = new Set(prev);
-                  for (const item of roles) {
-                    if (item.id === role.id || item.url === role.url) next.add(item.id);
-                  }
-                  return next;
-                })
-              }
-              onRevert={() =>
-                setHidden((prev) => {
-                  const next = new Set(prev);
-                  next.delete(role.id);
-                  return next;
-                })
-              }
-            />
-          </div>
-        </li>
-      ))}
-    </ol>
+          </li>
+        ))}
+      </ol>
+      {roles.length > visible.length ? (
+        <p className="text-center text-xs text-paper-dim">
+          Showing the top {visible.length} of {roles.length} ranked roles. Mark or skip
+          these to advance the queue.
+        </p>
+      ) : null}
+    </div>
   );
 }

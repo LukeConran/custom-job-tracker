@@ -1,52 +1,19 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { StatusSelect } from "@/components/status-select";
 import { formatRelative } from "@/lib/format";
 import { APPLICATION_STATUSES } from "@/lib/types";
 import { STATUS_LABELS } from "@/lib/status";
 import type { Application, ApplicationStatus } from "@/lib/types";
 
 export function ApplicationTable({ applications }: { applications: Application[] }) {
-  const router = useRouter();
   const [filter, setFilter] = useState<ApplicationStatus | "all">("all");
-  const [pendingId, setPendingId] = useState<string | null>(null);
-  const [drafts, setDrafts] = useState<Partial<Record<string, ApplicationStatus>>>({});
-
-  const rows = useMemo(
-    () =>
-      applications.map((app) =>
-        drafts[app.id] && drafts[app.id] !== app.status
-          ? { ...app, status: drafts[app.id]! }
-          : app,
-      ),
-    [applications, drafts],
-  );
 
   const visible = useMemo(
-    () => (filter === "all" ? rows : rows.filter((app) => app.status === filter)),
-    [rows, filter],
+    () => (filter === "all" ? applications : applications.filter((app) => app.status === filter)),
+    [applications, filter],
   );
-
-  async function changeStatus(id: string, status: ApplicationStatus) {
-    setPendingId(id);
-    setDrafts((current) => ({ ...current, [id]: status }));
-    const response = await fetch("/api/applications", {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id, status }),
-    });
-    setPendingId(null);
-    if (!response.ok) {
-      setDrafts((current) => {
-        const next = { ...current };
-        delete next[id];
-        return next;
-      });
-      return;
-    }
-    router.refresh();
-  }
 
   return (
     <div className="space-y-4">
@@ -87,18 +54,7 @@ export function ApplicationTable({ applications }: { applications: Application[]
                     {app.notes ? <div className="mt-1 text-xs text-paper-dim/80">{app.notes}</div> : null}
                   </td>
                   <td className="px-4 py-3">
-                    <select
-                      value={app.status}
-                      disabled={pendingId === app.id}
-                      onChange={(event) => changeStatus(app.id, event.target.value as ApplicationStatus)}
-                      className="rounded-full border border-line bg-ink px-2 py-1 text-xs text-paper"
-                    >
-                      {APPLICATION_STATUSES.map((status) => (
-                        <option key={status} value={status}>
-                          {STATUS_LABELS[status]}
-                        </option>
-                      ))}
-                    </select>
+                    <StatusSelect application={app} />
                   </td>
                   <td className="px-4 py-3 text-paper-dim">{formatRelative(app.applied_at)}</td>
                   <td className="px-4 py-3">
