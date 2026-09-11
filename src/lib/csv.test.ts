@@ -23,5 +23,17 @@ describe("CSV import", () => {
     expect(normalizeStatus("Online Assessment")).toBe("oa");
     expect(normalizeStatus("Skip")).toBe("skipped");
     expect(normalizeStatus("Interview")).toBe("interviewing");
+    expect(normalizeStatus("Offer")).toBe("offer");
+    expect(normalizeStatus("OA")).toBe("oa");
+    expect(normalizeStatus("Applied")).toBe("applied");
+  });
+
+  it("matches Location even when the header has a leading space", () => {
+    const csv = [
+      "Company,Role,Type, Location,Status,Link",
+      "Acme,ML Intern,Intern,Remote,Applied,https://acme.com/job/2",
+    ].join("\n");
+    const rows = applicationsFromCsv(csv);
+    expect(rows[0].notes).toContain("Location: Remote");
   });
 });

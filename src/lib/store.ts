@@ -4,8 +4,8 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { APPLICATION_STATUSES, type Application, type ApplicationInput, type Role } from "./types";
 import { getServerSupabase, supabaseBackendLabel } from "./supabase";
+import { resolveApplicationRoleId, type RoleRef } from "./link-role";
 import { normalizeUrl } from "./url";
-import { roleIdFromUrl } from "./hash";
 
 const LOCAL_STORE_PATH = path.join(process.cwd(), ".data", "store.json");
 
@@ -169,7 +169,33 @@ export async function upsertRoles(incoming: Role[]): Promise<number> {
   return incoming.length;
 }
 
-export async function upsertApplication(input: ApplicationInput): Promise<Application> {
+export async function listRoleRefs(): Promise<RoleRef[]> {
+  const supabase = getServerSupabase();
+  if (supabase) {
+    const { data, error } = await supabase.from("roles").select("id, url");
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((row) => ({
+      id: String(row.id),
+      url: String(row.url ?? ""),
+    }));
+  }
+  const local = await readLocal();
+  return local.roles.map((role) => ({ id: role.id, url: role.url }));
+}
+
+export async function upsertApplications(inputs: ApplicationInput[]): Promise<Application[]> {
+  const knownRoles = await listRoleRefs();
+  const applications: Application[] = [];
+  for (const input of inputs) {
+    applications.push(await upsertApplication(input, knownRoles));
+  }
+  return applications;
+}
+
+export async function upsertApplication(
+  input: ApplicationInput,
+  knownRoles?: RoleRef[],
+): Promise<Application> {
   assertStatus(input.status);
   const url = normalizeUrl(input.url);
   if (!url) throw new Error("A job URL is required.");
@@ -179,7 +205,7 @@ export async function upsertApplication(input: ApplicationInput): Promise<Applic
     (input.status === "applied" || input.status === "interviewing" || input.status === "oa"
       ? now
       : null);
-  const role_id = input.role_id ?? roleIdFromUrl(url);
+  const refs = knownRoles ?? (await listRoleRefs());
 
   const supabase = getServerSupabase();
   if (supabase) {
@@ -188,6 +214,11 @@ export async function upsertApplication(input: ApplicationInput): Promise<Applic
       .select("*")
       .eq("url", url)
       .maybeSingle();
+
+    const role_id = resolveApplicationRoleId(
+      { role_id: input.role_id ?? (existing?.role_id as string | null) ?? null, url },
+      refs,
+    );
 
     const payload = {
       id: existing?.id ?? input.id ?? randomUUID(),
@@ -216,6 +247,10 @@ export async function upsertApplication(input: ApplicationInput): Promise<Applic
 
   const local = await readLocal();
   const existing = local.applications.find((app) => app.url === url);
+  const role_id = resolveApplicationRoleId(
+    { role_id: input.role_id ?? existing?.role_id ?? null, url },
+    refs,
+  );
   const next: Application = {
     id: existing?.id ?? input.id ?? randomUUID(),
     role_id,

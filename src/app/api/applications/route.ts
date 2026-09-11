@@ -1,6 +1,11 @@
 import { applicationsFromCsv } from "@/lib/csv";
 import { isApplicationStatus } from "@/lib/status";
-import { listApplications, updateApplication, upsertApplication } from "@/lib/store";
+import {
+  listApplications,
+  updateApplication,
+  upsertApplication,
+  upsertApplications,
+} from "@/lib/store";
 import { revalidatePath } from "next/cache";
 import { NextRequest } from "next/server";
 
@@ -26,22 +31,14 @@ export async function POST(request: NextRequest) {
     const contentType = request.headers.get("content-type") ?? "";
     if (contentType.includes("text/csv")) {
       const csv = await request.text();
-      const rows = applicationsFromCsv(csv);
-      const applications = [];
-      for (const row of rows) {
-        applications.push(await upsertApplication(row));
-      }
+      const applications = await upsertApplications(applicationsFromCsv(csv));
       refreshPages();
       return Response.json({ applications, imported: applications.length });
     }
 
     const body = (await request.json()) as Record<string, unknown>;
     if (typeof body.csv === "string") {
-      const rows = applicationsFromCsv(body.csv);
-      const applications = [];
-      for (const row of rows) {
-        applications.push(await upsertApplication(row));
-      }
+      const applications = await upsertApplications(applicationsFromCsv(body.csv));
       refreshPages();
       return Response.json({ applications, imported: applications.length });
     }
