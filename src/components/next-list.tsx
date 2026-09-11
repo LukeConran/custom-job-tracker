@@ -67,7 +67,22 @@ export function NextList({ roles }: { roles: Role[] }) {
             </div>
             <StatusButtons
               role={role}
-              onDone={() => setHidden((prev) => new Set(prev).add(role.id))}
+              onDone={() =>
+                setHidden((prev) => {
+                  const next = new Set(prev);
+                  for (const item of roles) {
+                    if (item.id === role.id || item.url === role.url) next.add(item.id);
+                  }
+                  return next;
+                })
+              }
+              onRevert={() =>
+                setHidden((prev) => {
+                  const next = new Set(prev);
+                  next.delete(role.id);
+                  return next;
+                })
+              }
             />
           </div>
         </li>

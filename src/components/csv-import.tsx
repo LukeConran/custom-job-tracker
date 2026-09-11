@@ -31,7 +31,7 @@ export function CsvImport() {
   }
 
   return (
-    <label className="inline-flex cursor-pointer flex-col items-end gap-1">
+    <label className="inline-flex shrink-0 cursor-pointer flex-col items-end gap-1">
       <span className="rounded-full border border-line px-4 py-2 text-sm text-paper hover:border-brass hover:text-brass">
         {state === "loading" ? "Importing…" : "Import CSV"}
       </span>
@@ -49,8 +49,8 @@ export function CsvImport() {
           {detail}
         </span>
       ) : (
-        <span className="text-xs text-paper-dim">
-          Company, Role, Type, Location, Date Applied, Status, Contact, Pay/Hr, Link
+        <span className="max-w-[16rem] text-right text-xs text-paper-dim">
+          Sheet columns: Company, Role, Status, Link
         </span>
       )}
     </label>

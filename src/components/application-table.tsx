@@ -11,20 +11,40 @@ export function ApplicationTable({ applications }: { applications: Application[]
   const router = useRouter();
   const [filter, setFilter] = useState<ApplicationStatus | "all">("all");
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Partial<Record<string, ApplicationStatus>>>({});
+
+  const rows = useMemo(
+    () =>
+      applications.map((app) =>
+        drafts[app.id] && drafts[app.id] !== app.status
+          ? { ...app, status: drafts[app.id]! }
+          : app,
+      ),
+    [applications, drafts],
+  );
 
   const visible = useMemo(
-    () => (filter === "all" ? applications : applications.filter((app) => app.status === filter)),
-    [applications, filter],
+    () => (filter === "all" ? rows : rows.filter((app) => app.status === filter)),
+    [rows, filter],
   );
 
   async function changeStatus(id: string, status: ApplicationStatus) {
     setPendingId(id);
-    await fetch("/api/applications", {
+    setDrafts((current) => ({ ...current, [id]: status }));
+    const response = await fetch("/api/applications", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ id, status }),
     });
     setPendingId(null);
+    if (!response.ok) {
+      setDrafts((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+      return;
+    }
     router.refresh();
   }
 

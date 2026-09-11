@@ -137,6 +137,17 @@ export async function upsertRoles(incoming: Role[]): Promise<number> {
       const { error } = await supabase.from("roles").upsert(chunk, { onConflict: "id" });
       if (error) throw new Error(error.message);
     }
+    const incomingIds = new Set(incoming.map((role) => role.id));
+    const { data: catalog, error: catalogError } = await supabase.from("roles").select("id");
+    if (catalogError) throw new Error(catalogError.message);
+    const staleIds = (catalog ?? [])
+      .map((row) => row.id as string)
+      .filter((id) => !incomingIds.has(id));
+    for (let i = 0; i < staleIds.length; i += 200) {
+      const chunk = staleIds.slice(i, i + 200);
+      const { error } = await supabase.from("roles").delete().in("id", chunk);
+      if (error) throw new Error(error.message);
+    }
     return rows.length;
   }
 
@@ -146,15 +157,14 @@ export async function upsertRoles(incoming: Role[]): Promise<number> {
 
   const local = await readLocal();
   const byId = new Map(local.roles.map((role) => [role.id, role]));
-  for (const role of incoming) {
+  local.roles = incoming.map((role) => {
     const prev = byId.get(role.id);
-    byId.set(role.id, {
+    return {
       ...role,
       first_seen_at: prev?.first_seen_at ?? role.first_seen_at ?? now,
       last_seen_at: now,
-    });
-  }
-  local.roles = [...byId.values()];
+    };
+  });
   await writeLocal(local);
   return incoming.length;
 }

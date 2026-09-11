@@ -15,6 +15,7 @@ const TRACKING_PARAM_EXACT = new Set([
   "ref",
   "ref_src",
   "source",
+  "embed",
 ]);
 
 function isTrackingParam(name: string): boolean {
@@ -60,7 +61,9 @@ export function normalizeUrl(input: string): string {
   parsed.search = kept.toString();
 
   if (parsed.pathname.length > 1) {
-    parsed.pathname = parsed.pathname.replace(/\/+$/, "");
+    parsed.pathname = parsed.pathname
+      .replace(/\/(application|apply)$/i, "")
+      .replace(/\/+$/, "");
   }
 
   return parsed.toString();

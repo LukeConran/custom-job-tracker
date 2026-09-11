@@ -23,6 +23,27 @@ describe("normalizeUrl", () => {
     );
   });
 
+  it("collapses Ashby /application?embed and Workable /apply suffixes", () => {
+    expect(
+      urlsMatch(
+        "https://jobs.ashbyhq.com/allen-control-systems/a7831fef-7125-4c03-b828-5f0472989037/application?embed=true",
+        "https://jobs.ashbyhq.com/allen-control-systems/a7831fef-7125-4c03-b828-5f0472989037",
+      ),
+    ).toBe(true);
+    expect(
+      urlsMatch(
+        "https://apply.workable.com/twgai/j/AC536E5EE2/apply",
+        "https://apply.workable.com/twgai/j/AC536E5EE2",
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps job-identifying query tokens", () => {
+    expect(normalizeUrl("https://boards.greenhouse.io/embed/job_app?token=8175517")).toBe(
+      "https://boards.greenhouse.io/embed/job_app?token=8175517",
+    );
+  });
+
   it("treats tracking-only query strings as the same role", () => {
     expect(
       urlsMatch(

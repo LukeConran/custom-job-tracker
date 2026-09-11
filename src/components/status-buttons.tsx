@@ -11,7 +11,15 @@ const ACTIONS: { status: ApplicationStatus; label: string }[] = [
   { status: "skipped", label: "Skip" },
 ];
 
-export function StatusButtons({ role, onDone }: { role: Role; onDone?: () => void }) {
+export function StatusButtons({
+  role,
+  onDone,
+  onRevert,
+}: {
+  role: Role;
+  onDone?: () => void;
+  onRevert?: () => void;
+}) {
   const router = useRouter();
   const [pending, setPending] = useState<ApplicationStatus | null>(null);
   const [error, setError] = useState("");
@@ -19,6 +27,7 @@ export function StatusButtons({ role, onDone }: { role: Role; onDone?: () => voi
   async function update(status: ApplicationStatus) {
     setPending(status);
     setError("");
+    onDone?.();
     try {
       const response = await fetch("/api/applications", {
         method: "POST",
@@ -33,9 +42,9 @@ export function StatusButtons({ role, onDone }: { role: Role; onDone?: () => voi
       });
       const payload = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(payload.error ?? "Update failed");
-      onDone?.();
       router.refresh();
     } catch (err) {
+      onRevert?.();
       setError(err instanceof Error ? err.message : "Update failed");
       setPending(null);
     }
@@ -50,7 +59,7 @@ export function StatusButtons({ role, onDone }: { role: Role; onDone?: () => voi
             type="button"
             disabled={pending !== null}
             onClick={() => update(action.status)}
-            className="rounded-full border border-line bg-ink px-2.5 py-1 text-xs text-paper hover:border-brass hover:text-brass disabled:opacity-60"
+            className="rounded-full border border-line bg-ink px-3 py-1.5 text-xs font-medium text-paper hover:border-brass hover:text-brass disabled:opacity-60"
           >
             {pending === action.status ? "…" : action.label}
           </button>
