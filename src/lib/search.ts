@@ -1,5 +1,12 @@
 import type { Application, ApplicationStatus, FitTag, Role } from "./types";
 
+export const ACTIVE_PIPELINE_STATUSES: ApplicationStatus[] = [
+  "applied",
+  "interviewing",
+  "oa",
+  "offer",
+];
+
 export type NextRoleFilters = {
   query?: string;
   fitTag?: FitTag | "all" | null;
@@ -38,9 +45,17 @@ export function filterApplications(
 ): Application[] {
   const status = filters.status && filters.status !== "all" ? filters.status : null;
   return applications.filter((app) => {
-    if (status && app.status !== status) return false;
+    if (status) {
+      if (app.status !== status) return false;
+    } else if (!ACTIVE_PIPELINE_STATUSES.includes(app.status)) {
+      return false;
+    }
     return matchesQuery(filters.query, app.company, app.title, app.url, app.notes);
   });
+}
+
+export function countActivePipeline(applications: Application[]): number {
+  return applications.filter((app) => ACTIVE_PIPELINE_STATUSES.includes(app.status)).length;
 }
 
 export function countByStatus(

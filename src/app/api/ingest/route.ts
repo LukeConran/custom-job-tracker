@@ -3,6 +3,7 @@ import { ingestFeeds } from "@/lib/ingest";
 import { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 export const maxDuration = 60;
 
 function authorize(request: NextRequest): boolean {
@@ -19,10 +20,22 @@ async function handleIngest(request: NextRequest) {
   }
   try {
     const result = await ingestFeeds();
+    const totalFetched = Object.values(result.fetched).reduce((sum, n) => sum + n, 0);
+    if (result.kept === 0 && result.errors.length > 0 && totalFetched === 0) {
+      return Response.json(
+        { error: result.errors.join("; "), ...result },
+        { status: 502 },
+      );
+    }
     return Response.json(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Ingest failed";
-    return Response.json({ error: message }, { status: 500 });
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Ingest failed";
+    const cause =
+      error instanceof Error && error.cause instanceof Error ? ` (${error.cause.message})` : "";
+    return Response.json({ error: `${message}${cause}` }, { status: 500 });
   }
 }
 

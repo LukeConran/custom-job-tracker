@@ -26,6 +26,7 @@ export type FilterableListing = {
   program?: string | null;
   active?: boolean | null;
   is_visible?: boolean | null;
+  degrees?: string[] | null;
 };
 
 export function isExcludedCompany(company: string): boolean {
@@ -71,7 +72,78 @@ export function passesSourceFilters(
   if (isExcludedCompany(listing.company)) return false;
   if (!isSummer2027Only(listing)) return false;
   if (!isMlDsAiCv(listing)) return false;
+  if (isPhdOnly(listing)) return false;
   return true;
+}
+
+function normalizeDegreeToken(raw: string): string {
+  return raw
+    .trim()
+    .toLowerCase()
+    .replace(/[’']/g, "'")
+    .replace(/\./g, "")
+    .replace(/\s+/g, " ");
+}
+
+type DegreeKind = "bachelors" | "masters" | "phd" | "other";
+
+function degreeKind(token: string): DegreeKind {
+  const t = normalizeDegreeToken(token);
+  if (!t) return "other";
+  if (/post[\s-]*doc/.test(t) || /\bph\s*d\b/.test(t) || t === "phd" || /doctor(ate|al)?/.test(t)) {
+    return "phd";
+  }
+  if (/master/.test(t) || t === "ms" || t === "msc" || t === "ma" || t === "meng") return "masters";
+  if (/bachelor/.test(t) || t === "bs" || t === "ba" || t === "bsc" || /undergrad/.test(t)) {
+    return "bachelors";
+  }
+  return "other";
+}
+
+export function mentionsMixedDegreeTrack(title: string): boolean {
+  const t = title.replace(/[’']/g, "'");
+  if (/\bbs\s*\/\s*ms\s*\/\s*ph\.?\s*d/i.test(t)) return true;
+  if (/\bms\s*\/\s*ph\.?\s*d/i.test(t) || /\bph\.?\s*d\s*\/\s*ms\b/i.test(t)) return true;
+  if (/\b(b\.?\s*s\.?|ba|bachelor['s]*)\b.{0,24}\b(m\.?\s*s\.?|master['s]*)\b.{0,24}\b(ph\.?\s*d|phd)\b/i.test(t)) {
+    return true;
+  }
+  if (
+    /\b(m\.?\s*s\.?|masters?'?|msc)\b\s*[/|&,]+\s*(ph\.?\s*d|phd)\b/i.test(t) ||
+    /\b(m\.?\s*s\.?|masters?'?|msc)\b\s+or\s+(ph\.?\s*d|phd)\b/i.test(t)
+  ) {
+    return true;
+  }
+  if (
+    /\b(ph\.?\s*d|phd)\b\s*[/|&,]+\s*(m\.?\s*s\.?|masters?'?|msc)\b/i.test(t) ||
+    /\b(ph\.?\s*d|phd)\b\s+or\s+(m\.?\s*s\.?|masters?'?|msc)\b/i.test(t)
+  ) {
+    return true;
+  }
+  if (
+    /\b(b\.?\s*s\.?|bachelor['s]*)\b\s*[/|&,]+\s*(ph\.?\s*d|phd)\b/i.test(t) ||
+    /\b(b\.?\s*s\.?|bachelor['s]*)\b\s+or\s+(ph\.?\s*d|phd)\b/i.test(t)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function titleImpliesPhdOnly(title: string): boolean {
+  if (!title.trim()) return false;
+  if (mentionsMixedDegreeTrack(title)) return false;
+  if (/\bpost[\s-]*doc(toral)?\b/i.test(title)) return true;
+  return /\b(ph\.?\s*d\.?|phd|doctoral|doctorate)\b/i.test(title);
+}
+
+/** True when the listing is PhD-only / postdoc — not BS, MS, MS/PhD, or BS/MS/PhD. */
+export function isPhdOnly(listing: Pick<FilterableListing, "title" | "degrees">): boolean {
+  const kinds = (listing.degrees ?? []).map(degreeKind).filter((kind) => kind !== "other");
+  if (kinds.length > 0) {
+    const allowsBsMs = kinds.some((kind) => kind === "bachelors" || kind === "masters");
+    if (allowsBsMs) return false;
+    return kinds.every((kind) => kind === "phd");
+  }
+  return titleImpliesPhdOnly(listing.title);
 }
 
 function collectTermBlobs(listing: FilterableListing): string[] {

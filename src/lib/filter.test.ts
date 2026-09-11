@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   isExcludedCompany,
   isMlDsAiCv,
+  isPhdOnly,
   isSummer2027Only,
+  mentionsMixedDegreeTrack,
   passesSourceFilters,
 } from "./filter";
 import { mapSimplifyListings, mapZshahJobs, dedupeRoles } from "./sources";
@@ -165,5 +167,65 @@ describe("Summer 2027 + ML/DS/AI/CV filters", () => {
       ],
     });
     expect(dedupeRoles([...simplify, ...zshah])).toHaveLength(1);
+  });
+});
+
+describe("PhD-only filter", () => {
+  it("excludes Simplify listings whose degrees are PhD alone", () => {
+    expect(isPhdOnly({ title: "Research Intern", degrees: ["PhD"] })).toBe(true);
+    expect(
+      passesSourceFilters({
+        company: "OpenAI",
+        title: "Research Intern",
+        category: "AI/ML/Data",
+        terms: ["Summer 2027"],
+        degrees: ["PhD"],
+        active: true,
+        is_visible: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("keeps MS/PhD and BS/MS/PhD degree arrays", () => {
+    expect(isPhdOnly({ title: "ML Intern", degrees: ["Master's", "PhD"] })).toBe(false);
+    expect(isPhdOnly({ title: "ML Intern", degrees: ["Bachelor's", "Master's", "PhD"] })).toBe(false);
+    expect(isPhdOnly({ title: "ML Intern", degrees: ["Bachelor's"] })).toBe(false);
+    expect(isPhdOnly({ title: "ML Intern", degrees: [] })).toBe(false);
+  });
+
+  it("uses the title only when degrees are missing, without dropping mixed tracks", () => {
+    expect(isPhdOnly({ title: "PhD Research Intern - Computer Vision" })).toBe(true);
+    expect(isPhdOnly({ title: "Postdoctoral Researcher Intern" })).toBe(true);
+    expect(isPhdOnly({ title: "MS/PhD Machine Learning Intern" })).toBe(false);
+    expect(isPhdOnly({ title: "BS/MS/PhD Computer Vision Intern" })).toBe(false);
+    expect(isPhdOnly({ title: "PhD or MS Research Intern" })).toBe(false);
+    expect(isPhdOnly({ title: "Data Science Intern" })).toBe(false);
+    expect(mentionsMixedDegreeTrack("Intern (MS/PhD)")).toBe(true);
+  });
+
+  it("drops PhD-only Simplify rows in the mapper", () => {
+    const roles = mapSimplifyListings([
+      {
+        company_name: "Acme",
+        title: "ML Intern",
+        category: "AI/ML/Data",
+        terms: ["Summer 2027"],
+        active: true,
+        is_visible: true,
+        url: "https://acme.com/phd-only",
+        degrees: ["PhD"],
+      },
+      {
+        company_name: "Acme",
+        title: "ML Intern",
+        category: "AI/ML/Data",
+        terms: ["Summer 2027"],
+        active: true,
+        is_visible: true,
+        url: "https://acme.com/ms-phd",
+        degrees: ["Master's", "PhD"],
+      },
+    ]);
+    expect(roles.map((role) => role.url)).toEqual(["https://acme.com/ms-phd"]);
   });
 });

@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { APPLICATION_STATUSES, type Application, type ApplicationInput, type Role } from "./types";
 import { getServerSupabase, supabaseBackendLabel } from "./supabase";
 import { resolveApplicationRoleId, type RoleRef } from "./link-role";
+import { removeApplicationById } from "./application-delete";
 import { normalizeUrl } from "./url";
 
 const LOCAL_STORE_PATH = path.join(process.cwd(), ".data", "store.json");
@@ -292,6 +293,31 @@ export async function updateApplication(
   local.applications[index] = next;
   await writeLocal(local);
   return next;
+}
+
+export async function deleteApplication(id: string): Promise<void> {
+  const applicationId = id.trim();
+  if (!applicationId) throw new Error("Application id is required.");
+  const supabase = getServerSupabase();
+  if (supabase) {
+    const { data, error } = await supabase
+      .from("applications")
+      .delete()
+      .eq("id", applicationId)
+      .select("id")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error("Application not found.");
+    return;
+  }
+
+  if (process.env.VERCEL) {
+    throw new Error("Supabase env vars are required on Vercel.");
+  }
+
+  const local = await readLocal();
+  local.applications = removeApplicationById(local.applications, applicationId);
+  await writeLocal(local);
 }
 
 export async function lastIngestAt(): Promise<string | null> {

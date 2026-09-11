@@ -96,6 +96,23 @@ describe("filterApplications", () => {
     ]);
     expect(filterApplications(rows, { status: "all" })).toHaveLength(3);
   });
+
+  it("treats All as the active pipeline, excluding rejected and skipped", () => {
+    const mixed = [
+      ...rows,
+      app({ id: "4", status: "rejected", company: "Nope" }),
+      app({ id: "5", status: "skipped", company: "SkipCo" }),
+      app({ id: "6", status: "offer", company: "HireMe" }),
+    ];
+    expect(filterApplications(mixed, { status: "all" }).map((row) => row.id)).toEqual([
+      "1",
+      "2",
+      "3",
+      "6",
+    ]);
+    expect(filterApplications(mixed, { status: "rejected" }).map((row) => row.id)).toEqual(["4"]);
+    expect(filterApplications(mixed, { status: "skipped" }).map((row) => row.id)).toEqual(["5"]);
+  });
 });
 
 describe("countByStatus", () => {

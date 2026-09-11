@@ -100,6 +100,7 @@ export function mapSimplifyListings(listings: SimplifyListing[]): Role[] {
           terms: listing.terms,
           active: listing.active,
           is_visible: listing.is_visible,
+          degrees: listing.degrees,
         },
         { requireActiveVisible: true },
       )

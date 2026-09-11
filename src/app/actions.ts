@@ -1,7 +1,8 @@
 "use server";
 
 import { isApplicationStatus } from "@/lib/status";
-import { updateApplication, upsertApplication } from "@/lib/store";
+import { isDeleteConfirmed } from "@/lib/application-delete";
+import { deleteApplication, updateApplication, upsertApplication } from "@/lib/store";
 import { revalidatePath } from "next/cache";
 
 function refreshPages() {
@@ -32,5 +33,18 @@ export async function changeApplicationStatus(formData: FormData) {
     throw new Error("Application id and valid status are required.");
   }
   await updateApplication(id, { status });
+  refreshPages();
+}
+
+export async function deleteTrackedApplication(formData: FormData) {
+  const id = String(formData.get("id") ?? "").trim();
+  const confirm = String(formData.get("confirm") ?? "");
+  if (!isDeleteConfirmed(confirm)) {
+    throw new Error('Type "delete" to confirm.');
+  }
+  if (!id) {
+    throw new Error("Application id is required.");
+  }
+  await deleteApplication(id);
   refreshPages();
 }

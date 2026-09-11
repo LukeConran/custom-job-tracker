@@ -6,18 +6,17 @@ import {
   mapSimplifyListings,
   mapZshahJobs,
 } from "./sources";
+import { fetchJsonFeed } from "./fetch-feed";
+import { describeNetworkError } from "./net-error";
 import { currentBackend, lastIngestAt, upsertRoles } from "./store";
 import type { IngestResult, Role } from "./types";
 
-async function fetchJson(url: string): Promise<unknown> {
-  const response = await fetch(url, {
-    cache: "no-store",
-    headers: { "user-agent": "application-scout/0.1 (personal internship tracker)" },
-  });
-  if (!response.ok) {
-    throw new Error(`${url} returned ${response.status}`);
+async function fetchJson(url: string, label: string): Promise<unknown> {
+  try {
+    return await fetchJsonFeed(url);
+  } catch (error) {
+    throw new Error(`${label}: ${describeNetworkError(error)}`);
   }
-  return response.json();
 }
 
 export async function ingestFeeds(): Promise<IngestResult> {
@@ -26,8 +25,8 @@ export async function ingestFeeds(): Promise<IngestResult> {
   const batches: Role[][] = [];
 
   const [simplifyResult, zshahResult] = await Promise.allSettled([
-    fetchJson(SIMPLIFY_LISTINGS_URL),
-    fetchJson(ZSHAH_JOBS_URL),
+    fetchJson(SIMPLIFY_LISTINGS_URL, "simplify"),
+    fetchJson(ZSHAH_JOBS_URL, "zshah"),
   ]);
 
   if (simplifyResult.status === "fulfilled") {
@@ -36,7 +35,9 @@ export async function ingestFeeds(): Promise<IngestResult> {
     batches.push(mapSimplifyListings(listings));
   } else {
     fetched.simplify = 0;
-    errors.push(`simplify: ${simplifyResult.reason instanceof Error ? simplifyResult.reason.message : "failed"}`);
+    errors.push(
+      simplifyResult.reason instanceof Error ? simplifyResult.reason.message : "simplify: failed",
+    );
   }
 
   if (zshahResult.status === "fulfilled") {
@@ -45,11 +46,20 @@ export async function ingestFeeds(): Promise<IngestResult> {
     batches.push(mapZshahJobs(payload as { jobs?: never[] }));
   } else {
     fetched.zshah = 0;
-    errors.push(`zshah: ${zshahResult.reason instanceof Error ? zshahResult.reason.message : "failed"}`);
+    errors.push(zshahResult.reason instanceof Error ? zshahResult.reason.message : "zshah: failed");
   }
 
   const keptRoles = dedupeRoles(batches.flat());
-  const upserted = await upsertRoles(keptRoles);
+  let upserted = 0;
+  try {
+    upserted = await upsertRoles(keptRoles);
+  } catch (error) {
+    errors.push(`store: ${describeNetworkError(error)}`);
+    if (keptRoles.length > 0) {
+      throw new Error(errors.join("; "));
+    }
+  }
+
   return {
     fetched,
     kept: keptRoles.length,

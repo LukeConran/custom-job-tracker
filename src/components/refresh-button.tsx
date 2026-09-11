@@ -12,23 +12,40 @@ export function RefreshButton() {
     setState("loading");
     setDetail("Fetching public internship feeds…");
     try {
-      const response = await fetch("/api/ingest", { method: "POST" });
-      const payload = (await response.json()) as {
+      const response = await fetch("/api/ingest", {
+        method: "POST",
+        signal: AbortSignal.timeout(90_000),
+      });
+      const raw = await response.text();
+      let payload: {
         kept?: number;
         upserted?: number;
         errors?: string[];
         error?: string;
+        fetched?: Record<string, number>;
       };
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Ingest failed");
+      try {
+        payload = JSON.parse(raw) as typeof payload;
+      } catch {
+        throw new Error(
+          `Refresh failed (${response.status}): ${raw.slice(0, 180).replace(/\s+/g, " ") || "empty response"}`,
+        );
       }
-      const extra = payload.errors?.length ? ` (${payload.errors.join("; ")})` : "";
+      if (!response.ok) {
+        throw new Error(payload.error ?? `Refresh failed (${response.status})`);
+      }
+      const extra = payload.errors?.length ? ` — ${payload.errors.join("; ")}` : "";
       setDetail(`Indexed ${payload.kept ?? payload.upserted ?? 0} Summer 2027 roles${extra}`);
       setState("done");
       router.refresh();
     } catch (error) {
       setState("error");
-      setDetail(error instanceof Error ? error.message : "Ingest failed");
+      if (error instanceof DOMException && error.name === "TimeoutError") {
+        setDetail("Refresh timed out after 90s. Try again — Simplify’s listings file is large.");
+        return;
+      }
+      const message = error instanceof Error ? error.message : "Ingest failed";
+      setDetail(message === "Failed to fetch" || message === "fetch failed" ? "Could not reach ingest. Check the network and try again." : message);
     }
   }
 
@@ -43,7 +60,7 @@ export function RefreshButton() {
         {state === "loading" ? "Refreshing…" : "Refresh jobs"}
       </button>
       {detail ? (
-        <p className={`max-w-xs text-right text-xs ${state === "error" ? "text-rose" : "text-paper-dim"}`}>
+        <p className={`max-w-sm text-right text-xs ${state === "error" ? "text-rose" : "text-paper-dim"}`}>
           {detail}
         </p>
       ) : null}

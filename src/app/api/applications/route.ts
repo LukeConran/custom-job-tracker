@@ -1,6 +1,8 @@
 import { applicationsFromCsv } from "@/lib/csv";
+import { parseDeleteApplicationId } from "@/lib/application-delete";
 import { isApplicationStatus } from "@/lib/status";
 import {
+  deleteApplication,
   listApplications,
   updateApplication,
   upsertApplication,
@@ -102,5 +104,19 @@ export async function PATCH(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to update application";
     return Response.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = (await request.json()) as unknown;
+    const id = parseDeleteApplicationId(body);
+    await deleteApplication(id);
+    refreshPages();
+    return Response.json({ deleted: id });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to delete application";
+    const status = message === "Application not found." ? 404 : 500;
+    return Response.json({ error: message }, { status });
   }
 }

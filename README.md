@@ -18,9 +18,9 @@ Next.js App Router, TypeScript, Tailwind CSS, `@supabase/supabase-js`.
 | Route | What it does |
 | --- | --- |
 | `/` | Ranked Next to apply list with company/title search + fit chips, keyword hints, **Refresh jobs**, Applied / Interviewing / OA / Skip |
-| `/applications` | Compact tracker table with search, status chips (OA count), status dropdown + optional CSV import |
+| `/applications` | Compact tracker table with search, **All = active pipeline** (hides rejected/skipped), status chips, JD links, delete-with-confirm, CSV import |
 | `POST /api/ingest` | Fetch, filter, rank, upsert roles |
-| `GET/POST/PATCH /api/applications` | Create or update an application. `POST` also accepts CSV (`text/csv` or `{ "csv": "..." }`) |
+| `GET/POST/PATCH/DELETE /api/applications` | Create, update, or delete an application. `POST` also accepts CSV (`text/csv` or `{ "csv": "..." }`) |
 
 ## Ranking
 
@@ -34,10 +34,18 @@ Any role that already has an application in **any** status, including `skipped`,
 
 ## Sources (GET only)
 
-1. [SimplifyJobs Summer 2027 listings](https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json) — `active` and visible; category `AI/ML/Data` **or** CV/ML/DS/AI title keywords; **Summer 2027** terms only
-2. [zshah101 Summer 2027 / Fall 2026 jobs](https://zshah101.github.io/Automated-List-Of-Summer-2027-and-Fall-2026-Tech-Internships/api/jobs.json) — ML/AI/CV; **Summer 2027** only
+1. [SimplifyJobs Summer 2027 listings](https://raw.githubusercontent.com/SimplifyJobs/Summer2027-Internships/dev/.github/scripts/listings.json) — `active` and visible; category `AI/ML/Data` **or** CV/ML/DS/AI title keywords; **Summer 2027** terms only; **not PhD-only**
+2. [zshah101 Summer 2027 / Fall 2026 jobs](https://zshah101.github.io/Automated-List-Of-Summer-2027-and-Fall-2026-Tech-Internships/api/jobs.json) — ML/AI/CV; **Summer 2027** only; same PhD-only drop via title when degrees are absent
 
 URLs are normalized (tracking/utm params stripped, host lowercased, trailing slash removed) and deduped by that cleaned URL. Sponsorship is **not** used as a filter.
+
+### Degree filter
+
+Keep BS, MS, BS/MS, BS/MS/PhD, and MS/PhD. Drop **PhD-only** (and postdoc).
+
+- Simplify `degrees: ["PhD"]` (and other PhD/postdoc-only arrays) → exclude
+- `["Master's","PhD"]`, `["Bachelor's","Master's","PhD"]`, Bachelor’s/Master’s only, or empty `degrees` → keep (empty falls through to the title)
+- Title-only: drop “PhD Intern” / postdoc; **do not** drop “MS/PhD” or “BS/MS/PhD”
 
 ### Hard company exclusions
 
