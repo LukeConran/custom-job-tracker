@@ -13,7 +13,7 @@ export function StatusSelect({ application }: { application: Application }) {
         name="status"
         defaultValue={application.status}
         onChange={(event) => event.currentTarget.form?.requestSubmit()}
-        className="rounded-full border border-line bg-ink px-2 py-1 text-xs text-paper"
+        className="rounded-full border border-line bg-ink px-2 py-0.5 text-xs text-paper"
       >
         {APPLICATION_STATUSES.map((status) => (
           <option key={status} value={status}>

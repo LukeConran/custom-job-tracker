@@ -16,8 +16,8 @@ export default async function HomePage() {
   const backend = currentBackend();
 
   return (
-    <div className="space-y-8">
-      <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-6">
+      <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-[11px] uppercase tracking-[0.28em] text-brass">
             Summer 2027 only · ML / DS / AI / CV

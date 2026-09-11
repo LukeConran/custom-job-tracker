@@ -8,8 +8,8 @@ export default async function ApplicationsPage() {
   const applications = await listApplications();
 
   return (
-    <div className="space-y-8">
-      <section className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <div className="space-y-6">
+      <section className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-[11px] uppercase tracking-[0.28em] text-brass">
             Personal tracker

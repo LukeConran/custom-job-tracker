@@ -10,7 +10,7 @@ const ACTIONS: { status: ApplicationStatus; label: string }[] = [
 
 export function StatusButtons({ role }: { role: Role }) {
   return (
-    <form action={trackApplication} className="flex flex-wrap justify-end gap-1.5">
+    <form action={trackApplication} className="flex shrink-0 flex-wrap justify-end gap-1">
       <input type="hidden" name="role_id" value={role.id} />
       <input type="hidden" name="url" value={role.url} />
       <input type="hidden" name="company" value={role.company} />
@@ -21,7 +21,7 @@ export function StatusButtons({ role }: { role: Role }) {
           type="submit"
           name="status"
           value={action.status}
-          className="rounded-full border border-line bg-ink px-3 py-1.5 text-xs font-medium text-paper hover:border-brass hover:text-brass"
+          className="rounded-full border border-line bg-ink px-2.5 py-1 text-[11px] font-medium text-paper hover:border-brass hover:text-brass"
         >
           {action.label}
         </button>
