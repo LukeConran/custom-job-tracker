@@ -17,8 +17,8 @@ Next.js App Router, TypeScript, Tailwind CSS, `@supabase/supabase-js`.
 
 | Route | What it does |
 | --- | --- |
-| `/` | Ranked Next to apply list, **Refresh jobs**, Applied / Interviewing / OA / Skip |
-| `/applications` | All tracked roles with a status dropdown + optional CSV import |
+| `/` | Ranked Next to apply list with company/title search + fit chips, keyword hints, **Refresh jobs**, Applied / Interviewing / OA / Skip |
+| `/applications` | Compact tracker table with search, status chips (OA count), status dropdown + optional CSV import |
 | `POST /api/ingest` | Fetch, filter, rank, upsert roles |
 | `GET/POST/PATCH /api/applications` | Create or update an application. `POST` also accepts CSV (`text/csv` or `{ "csv": "..." }`) |
 
@@ -75,7 +75,7 @@ INGEST_SECRET=
 
 Never commit real keys. `SUPABASE_SERVICE_ROLE_KEY` is server-only and is what ingest / application upserts should use.
 
-`INGEST_SECRET` is optional. If set, `POST /api/ingest` requires `Authorization: Bearer <secret>` or `x-ingest-secret: <secret>`. Leave it unset so the **Refresh jobs** button works. Use it for a production cron that is not the UI.
+`INGEST_SECRET` is optional. If set, `POST`/`GET /api/ingest` requires `Authorization: Bearer <secret>` or `x-ingest-secret: <secret>`. Leave it **blank** in `.env.local` so the **Refresh jobs** button (unauthenticated `POST /api/ingest`) keeps working. Set it in production before pointing a cron at the route.
 
 ### 3. RLS (personal prototype)
 
@@ -106,9 +106,43 @@ On `/applications`, import a sheet with columns:
 
 Status aliases (`OA`, `Online Assessment`, `Skip`, …) map onto the six tracker statuses. Extra columns are stored in `notes`. Rows without a `Link` are skipped. Duplicate cleaned URLs are ignored.
 
+## Scheduled ingest (Vercel Cron)
+
+Local **Refresh jobs** is an unauthenticated `POST /api/ingest`. That still works whenever `INGEST_SECRET` is unset or empty.
+
+For a hosted refresh, set `INGEST_SECRET` on Vercel, then either curl or use the daily cron in `vercel.json` (`GET /api/ingest` at 13:00 UTC). GET and POST share the same auth + ingest handler — existing POST behavior is unchanged.
+
+### curl
+
+```bash
+curl -X POST "https://YOUR_DOMAIN/api/ingest" \
+  -H "Authorization: Bearer $INGEST_SECRET"
+```
+
+Same secret via header:
+
+```bash
+curl -X POST "https://YOUR_DOMAIN/api/ingest" \
+  -H "x-ingest-secret: $INGEST_SECRET"
+```
+
+### Vercel Cron
+
+`vercel.json` already declares:
+
+```json
+{
+  "crons": [{ "path": "/api/ingest", "schedule": "0 13 * * *" }]
+}
+```
+
+Vercel Cron sends **GET** and, if you set `CRON_SECRET`, adds `Authorization: Bearer $CRON_SECRET`. Set `INGEST_SECRET` to that same value so the request is accepted. Or skip platform cron and POST from an external scheduler with `Authorization: Bearer $INGEST_SECRET`.
+
+Do not add “allow all” RLS policies; ingest still uses the service role on the server.
+
 ## Deploy (later)
 
-Vercel-ready: set the env vars, apply the schema, deploy. Point a cron at `POST /api/ingest` with `INGEST_SECRET` if you want scheduled refreshes.
+Vercel-ready: set the env vars (including `INGEST_SECRET` for cron), apply the schema, deploy.
 
 ## Schema
 

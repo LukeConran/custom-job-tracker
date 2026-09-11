@@ -3,7 +3,7 @@ import Link from "next/link";
 export function Header() {
   return (
     <header className="border-b border-line/80 bg-ink-soft/80 backdrop-blur">
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
         <Link href="/" className="group">
           <p className="text-[11px] uppercase tracking-[0.28em] text-brass">
             Field notes
